@@ -1,0 +1,48 @@
+# syntax=docker/dockerfile:1
+
+ARG GO_VERSION=1.26.10
+# Official v2.17.0 multi-platform index, verified against Docker Hub metadata.
+ARG ORB_BASE_IMAGE=netboxlabs/orb-agent:2.17.0@sha256:db5284752c2afe755df77e8d8ea447f4eebd429e40a4668ce966581177563c38
+
+FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-trixie AS agent-build
+WORKDIR /src/orb-agent
+ENV GOWORK=off
+
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
+COPY . .
+
+ARG TARGETOS TARGETARCH
+ARG ORB_VERSION=2.17.0-external-mapping
+ARG BUILD_COMMIT=1254f6a52ea6c9fabf45c5d7069fa288e6c37eba
+ARG BUILD_BRANCH=codex/snmp-external-mapping-v2.17.0
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
+    go build -mod=readonly -buildvcs=false -trimpath \
+      -ldflags="-s -w -X github.com/netboxlabs/orb-agent/agent/version.buildVersion=${ORB_VERSION} -X github.com/netboxlabs/orb-agent/agent/version.buildBranch=${BUILD_BRANCH} -X github.com/netboxlabs/orb-agent/agent/version.buildCommit=${BUILD_COMMIT}" \
+      -o /out/orb-agent ./cmd/main.go
+
+FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-trixie AS snmp-build
+WORKDIR /src/snmp-discovery
+ENV GOWORK=off
+
+COPY orb-discovery/snmp-discovery/go.mod orb-discovery/snmp-discovery/go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
+COPY orb-discovery/snmp-discovery/ .
+
+ARG TARGETOS TARGETARCH
+ARG SNMP_DISCOVERY_VERSION=1.39.0-external-mapping
+ARG BUILD_COMMIT=1254f6a52ea6c9fabf45c5d7069fa288e6c37eba
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    printf '%s\n' "${SNMP_DISCOVERY_VERSION}" > version/BUILD_VERSION.txt && \
+    printf '%s\n' "${BUILD_COMMIT}" > version/BUILD_COMMIT.txt && \
+    CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
+    go build -mod=readonly -buildvcs=false -trimpath -ldflags="-s -w" \
+      -o /out/snmp-discovery ./cmd/main.go
+
+# Preserve the base image's entrypoint, runtime dependencies and other backends.
+FROM ${ORB_BASE_IMAGE} AS final
+COPY --from=agent-build --chmod=755 /out/orb-agent /usr/local/bin/orb-agent
+COPY --from=snmp-build --chmod=755 /out/snmp-discovery /usr/local/bin/snmp-discovery

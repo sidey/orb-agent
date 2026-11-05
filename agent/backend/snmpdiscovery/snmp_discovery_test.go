@@ -93,6 +93,16 @@ func TestSnmpDiscoveryBackendStart(t *testing.T) {
 		assert.Contains(t, args, "debug", "Expected args to contain log level value")
 		assert.Contains(t, args, "--otel-endpoint", "Expected args to contain otel endpoint flag")
 		assert.Contains(t, args, "collector:4317", "Expected args to contain otel endpoint value")
+		mappingFlag := -1
+		for i, arg := range args {
+			if arg == "--mapping-file" {
+				mappingFlag = i
+				break
+			}
+		}
+		require.GreaterOrEqual(t, mappingFlag, 0)
+		require.Less(t, mappingFlag+1, len(args))
+		assert.Equal(t, "/opt/orb/custom mapping.yaml", args[mappingFlag+1])
 	})
 
 	assert.True(t, snmpdiscovery.Register(), "Failed to register SnmpDiscovery backend")
@@ -120,6 +130,7 @@ func TestSnmpDiscoveryBackendStart(t *testing.T) {
 		"log_level":          "debug",
 		"dry_run":            false,
 		"dry_run_output_dir": "/tmp/snmp",
+		"mapping_file":       "/opt/orb/custom mapping.yaml",
 	}, commons, nil)
 	require.NoError(t, err)
 
@@ -388,6 +399,7 @@ func TestSnmpDiscoveryBackendStartWithDryRunIncludesHostAndPort(t *testing.T) {
 		assert.NotContains(t, args, "--diode-target", "Expected args to NOT contain diode target flag in dry-run mode")
 		assert.NotContains(t, args, "--diode-client-id", "Expected args to NOT contain diode client id flag in dry-run mode")
 		assert.NotContains(t, args, "--diode-client-secret", "Expected args to NOT contain diode client secret flag in dry-run mode")
+		assert.NotContains(t, args, "--mapping-file", "Unset mapping_file keeps the embedded mapping")
 	})
 
 	assert.True(t, snmpdiscovery.Register(), "Failed to register SnmpDiscovery backend")
@@ -415,6 +427,17 @@ func TestSnmpDiscoveryBackendStartWithDryRunIncludesHostAndPort(t *testing.T) {
 	require.NoError(t, be.Stop(ctx))
 
 	mockCmd.AssertExpectations(t)
+}
+
+func TestSnmpDiscoveryBackendConfigureMappingFileType(t *testing.T) {
+	for _, value := range []any{42, true, nil, []string{"mapping.yaml"}} {
+		assert.True(t, snmpdiscovery.Register())
+		be := backend.GetBackend("snmp_discovery")
+		err := be.Configure(slog.New(slog.DiscardHandler), nil, map[string]any{
+			"mapping_file": value,
+		}, config.BackendCommons{}, nil)
+		require.ErrorContains(t, err, "mapping_file must be a string")
+	}
 }
 
 func createExecutable(t *testing.T, name string) {

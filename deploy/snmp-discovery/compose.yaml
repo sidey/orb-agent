@@ -1,0 +1,25 @@
+name: orb-snmp-discovery
+
+services:
+  orb-agent:
+    image: orb-agent:2.17.0-external-mapping
+    platform: ${ORB_PLATFORM:-linux/amd64}
+    build:
+      context: ../..
+      dockerfile: agent/docker/Dockerfile.snmp-overlay
+      args:
+        ORB_BASE_IMAGE: netboxlabs/orb-agent:2.17.0@sha256:db5284752c2afe755df77e8d8ea447f4eebd429e40a4668ce966581177563c38
+        BUILD_COMMIT: 1254f6a52ea6c9fabf45c5d7069fa288e6c37eba
+    command: ["run", "-c", "/etc/orb/agent.yaml"]
+    restart: unless-stopped
+    stop_grace_period: 60s
+    environment:
+      DIODE_TARGET: ${DIODE_TARGET:-}
+      DIODE_CLIENT_ID: ${DIODE_CLIENT_ID:-}
+      DIODE_CLIENT_SECRET: ${DIODE_CLIENT_SECRET:-}
+      SNMP_COMMUNITY: ${SNMP_COMMUNITY:-}
+    volumes:
+      - type: bind
+        source: ./config
+        target: /etc/orb
+        read_only: true

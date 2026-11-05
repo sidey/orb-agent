@@ -30,3 +30,6 @@ CLAUDE.md
 # the agent image and CI build the agent as a single module. See AGENTS.md.
 go.work
 go.work.sum
+
+# Local credentials for the Compose deployment example
+deploy/snmp-discovery/.env

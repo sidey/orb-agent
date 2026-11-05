@@ -45,6 +45,8 @@ func main() {
 		" Environment variable can be used by wrapping it in ${} (e.g. ${OTEL_ENDPOINT})")
 	otelExportPeriod := flag.Int("otel-export-period", 10, "Period in seconds between OpenTelemetry exports")
 	ingestBufferSize := flag.Int("ingest-buffer-size", 512, "buffer size for the ingest queue")
+	mappingFile := flag.String("mapping-file", "", "YAML file replacing the embedded OID mapping (read at startup)."+
+		" Environment variable can be used by wrapping it in ${} (e.g. ${SNMP_MAPPING_FILE})")
 
 	flag.Parse()
 
@@ -120,7 +122,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	policyManager, err := policy.NewManager(rootCtx, logger, client, manufacturers)
+	policyManager, err := policy.NewManager(rootCtx, logger, client, manufacturers,
+		policy.WithMappingFile(env.ResolveEnvOrExit(*mappingFile)))
 	if err != nil {
 		logger.Error("failed to create policy manager", "error", err)
 		os.Exit(1)

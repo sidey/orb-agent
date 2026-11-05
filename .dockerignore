@@ -3,3 +3,6 @@
 # force workspace mode, breaking `make agent_bin` (-mod=mod). Keep it out.
 go.work
 go.work.sum
+
+# Local runtime credentials are mounted/passed by Compose, never baked in.
+deploy/snmp-discovery/.env

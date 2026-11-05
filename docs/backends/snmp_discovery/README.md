@@ -58,8 +58,44 @@ Backend-level settings apply to the `snmp_discovery` process as a whole (distinc
 | Parameter | Type | Required | Description |
 |:---------:|:----:|:--------:|:-----------:|
 | ingest_buffer_size | integer | no | Capacity of the buffered queue that serializes Diode ingest calls. Defaults to `512`. |
+| mapping_file | string | no | Path to a YAML file that replaces the embedded OID mapping for this backend process. Unset or empty uses the embedded mapping. Read once at startup; restart the backend after editing the file. |
 
 Diode ingest runs through a single-consumer queue so concurrent crawl jobs finishing at once do not trigger concurrent OAuth token refresh storms. Increase `ingest_buffer_size` when large subnet bursts may enqueue many payloads before the consumer drains them; decrease it if memory is a concern — each queued request retains its entity payload until processed.
+
+#### External OID Mapping
+
+For the v2.17.0 source baseline and pinned official-image deployment, see [the Compose example](../../../deploy/snmp-discovery/README.md).
+
+Set `mapping_file` at backend level to change the collection mapping without rebuilding the binary:
+
+```yaml
+orb:
+  backends:
+    snmp_discovery:
+      mapping_file: /opt/orb/snmp/mapping.yaml
+    common:
+      diode:
+        target: grpc://127.0.0.1:8080/diode
+        client_id: ${DIODE_CLIENT_ID}
+        client_secret: ${DIODE_CLIENT_SECRET}
+```
+
+Start with a copy of `orb-discovery/snmp-discovery/policy/mapping.yaml`, retaining its `entries:` structure, and edit the desired OIDs. Mount the file into the container at the configured path. For example, using an image built from this version and tagged `orb-agent:2.17.0-external-mapping`:
+
+```sh
+docker run --rm \
+  -v "$PWD/mapping.yaml:/opt/orb/snmp/mapping.yaml:ro" \
+  -v "$PWD/agent.yaml:/etc/orb/agent.yaml:ro" \
+  orb-agent:2.17.0-external-mapping run -c /etc/orb/agent.yaml
+```
+
+The agent passes this setting to `snmp-discovery --mapping-file /opt/orb/snmp/mapping.yaml`. Standalone backend users can pass that flag directly; `${VAR}` substitution is supported in the flag value.
+
+The file is a **complete replacement**, not an overlay, and applies to every policy in this backend process. It must contain exactly one YAML document and a nonempty `entries` list. YAML syntax errors, unknown YAML keys, invalid or duplicate OIDs, and invalid index settings fail startup; a configured file that cannot be read also fails startup. These errors do not silently fall back to the built-in OIDs.
+
+Mappings use the existing entity mappers, field names, index decoding, and feature/vendor gates. Changing supported OID mappings does not require recompilation; adding a new entity type or transformation still requires implementation. This setting is separate from `lookup_extensions_dir`, which only extends model/manufacturer/module lookups.
+
+The mapping is read once when the backend starts. Restart the backend or container after updating it; reapplying a policy alone does not reload it. When using Kubernetes ConfigMaps, ensure the restarted process sees the updated mounted file (mounts using `subPath` require a new pod).
 
 ## Policy
 SNMP discovery policies are broken down into two subsections: `config` and `scope`.

@@ -1,0 +1,5 @@
+# Compatibility alias: compose.yaml now uses the two-binary overlay by default.
+services:
+  orb-agent:
+    build:
+      dockerfile: agent/docker/Dockerfile.snmp-overlay

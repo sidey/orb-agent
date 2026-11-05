@@ -1,0 +1,15 @@
+orb:
+  config_manager:
+    active: local
+  backends:
+    snmp_discovery:
+      mapping_file: /etc/orb/mapping.yaml
+    common:
+      diode:
+        target: ${DIODE_TARGET}
+        client_id: ${DIODE_CLIENT_ID}
+        client_secret: ${DIODE_CLIENT_SECRET}
+        agent_name: snmp-discovery-external-mapping
+  # Add approved policies here after configuring Diode and the mapping.
+  # An empty map starts the backend without making device SNMP requests.
+  policies: {}

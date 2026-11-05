@@ -1,0 +1,3 @@
+services:
+  orb-agent:
+    command: ["run", "-c", "/etc/orb/agent.verify.yaml"]

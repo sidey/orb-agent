@@ -2,7 +2,6 @@ package policy
 
 import (
 	"context"
-	"embed"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -23,9 +22,6 @@ import (
 	"github.com/netboxlabs/orb-agent/orb-discovery/snmp-discovery/targets"
 )
 
-//go:embed mapping.yaml
-var embeddedMapping embed.FS
-
 const (
 	// SNMPDefaultPort is the default SNMP port
 	SNMPDefaultPort = 161
@@ -45,11 +41,21 @@ type Manager struct {
 }
 
 // NewManager returns a new policy manager
-func NewManager(ctx context.Context, logger *slog.Logger, client diode.Client, manufacturers data.ManufacturerRetriever) (*Manager, error) {
-	mappingConfig, err := loadMappingConfig()
+func NewManager(ctx context.Context, logger *slog.Logger, client diode.Client, manufacturers data.ManufacturerRetriever, options ...ManagerOption) (*Manager, error) {
+	var settings managerOptions
+	for _, option := range options {
+		option(&settings)
+	}
+	mappingConfig, err := loadMappingConfig(settings.mappingFile)
 	if err != nil {
 		logger.Error("failed to load mapping config", "error", err)
 		return nil, err
+	}
+	if settings.mappingFile != "" {
+		if _, err := mapping.NewConfig(mappingConfig.Entries, slog.New(slog.DiscardHandler), manufacturers, nil, nil, config.Options{}); err != nil {
+			return nil, fmt.Errorf("invalid mapping config %q: %w", settings.mappingFile, err)
+		}
+		logger.Info("loaded external OID mapping", "file", settings.mappingFile, "entries", len(mappingConfig.Entries))
 	}
 
 	return &Manager{
@@ -92,21 +98,6 @@ func (m *Manager) ParsePolicies(data []byte) (map[string]config.Policy, error) {
 	}
 
 	return payload.Policies, nil
-}
-
-// loadMappingConfig loads the mapping config from the embedded file
-func loadMappingConfig() (config.Mapping, error) {
-	mappingConfigFileContents, err := embeddedMapping.ReadFile("mapping.yaml")
-	if err != nil {
-		return config.Mapping{}, fmt.Errorf("failed to read embedded mapping config file: %w", err)
-	}
-
-	var mappingConfig config.Mapping
-	if err := yaml.Unmarshal(mappingConfigFileContents, &mappingConfig); err != nil {
-		return config.Mapping{}, fmt.Errorf("failed to unmarshal embedded mapping config: %w", err)
-	}
-
-	return mappingConfig, nil
 }
 
 // applyDefaults applies the default values to the policy

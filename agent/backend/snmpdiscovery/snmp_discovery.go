@@ -53,6 +53,7 @@ type snmpDiscoveryBackend struct {
 	diodeDryRunOutputDir string
 	diodeLogLevel        string
 	ingestBufferSize     int
+	mappingFile          string
 
 	startTime  time.Time
 	proc       backend.Commander
@@ -114,6 +115,14 @@ func (d *snmpDiscoveryBackend) Configure(logger *slog.Logger, repo policies.Poli
 
 	d.apiHost = backend.ConfigValueOrDefault(config, "host", defaultAPIHost)
 	d.apiPort = backend.ConfigValueOrDefault(config, "port", defaultAPIPort)
+	d.mappingFile = ""
+	if value, present := config["mapping_file"]; present {
+		filename, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("snmp_discovery: mapping_file must be a string")
+		}
+		d.mappingFile = filename
+	}
 
 	d.ingestBufferSize = defaultIngestBufferSize
 	if v, prs := config["ingest_buffer_size"]; prs {
@@ -169,6 +178,9 @@ func (d *snmpDiscoveryBackend) buildArgs() []string {
 		"--host", d.apiHost,
 		"--port", d.apiPort,
 		"--ingest-buffer-size", fmt.Sprintf("%d", d.ingestBufferSize),
+	}
+	if d.mappingFile != "" {
+		dOptions = append(dOptions, "--mapping-file", d.mappingFile)
 	}
 	if d.diodeDryRun {
 		dOptions = append([]string{

@@ -1,0 +1,13 @@
+orb:
+  config_manager:
+    active: local
+  backends:
+    snmp_discovery:
+      mapping_file: /etc/orb/mapping.yaml
+    common:
+      diode:
+        dry_run: true
+        dry_run_output_dir: /tmp/orb-snmp-dry-run
+        agent_name: snmp-discovery-verify
+  # Verify the agent/backend startup path without querying devices or Diode.
+  policies: {}

@@ -24,6 +24,8 @@ Usage of snmp-discovery:
     	log format (default "TEXT")
   -log-level string
     	log level (default "INFO")
+  -mapping-file string
+        YAML file replacing the embedded OID mapping (read at startup). Supports ${SNMP_MAPPING_FILE} in the flag value.
   -otel-endpoint string
     	OpenTelemetry exporter endpoint (e.g. localhost:4317). Environment variable can be used by wrapping it in ${} (e.g. ${OTEL_ENDPOINT})
   -otel-export-period int
@@ -31,6 +33,12 @@ Usage of snmp-discovery:
   -port int
     	server port (default 8070)
 ```
+
+### External OID Mapping
+
+By default the backend uses its embedded `policy/mapping.yaml`. Pass `--mapping-file /path/to/mapping.yaml` to load a replacement from disk at startup. The file must use the same `entries:` structure; it is not merged with the embedded mapping. A missing, empty, malformed, or structurally invalid file fails startup instead of falling back to another OID set.
+
+When managed by Orb Agent, set `orb.backends.snmp_discovery.mapping_file` to the file's path **inside the container**. All policies share the selected mapping. After changing the file, restart the backend/container to reload it; no binary rebuild is needed. New entity types and transformations still need mapper code. See the [external mapping configuration](../../docs/backends/snmp_discovery/README.md#external-oid-mapping) for mounting and reload details.
 
 ### Policy RFC
 ```yaml

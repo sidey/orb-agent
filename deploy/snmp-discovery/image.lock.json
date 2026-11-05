@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "source": {
+    "tag": "v2.17.0",
+    "commit": "1254f6a52ea6c9fabf45c5d7069fa288e6c37eba"
+  },
+  "base_image": {
+    "ref": "netboxlabs/orb-agent:2.17.0@sha256:db5284752c2afe755df77e8d8ea447f4eebd429e40a4668ce966581177563c38",
+    "manifest_digest": "sha256:db5284752c2afe755df77e8d8ea447f4eebd429e40a4668ce966581177563c38",
+    "platform_manifests": {
+      "linux/amd64": "sha256:433a7801698d7a2b1d217b3114340e76dfa860cdeef58028dfae4e8a0ec85964",
+      "linux/arm64": "sha256:c1a5826cf2fef528ffd5c982c44b111cae773a3fda862ebeca6e85f74b0db9d4"
+    }
+  },
+  "modified_binaries": [
+    "/usr/local/bin/orb-agent",
+    "/usr/local/bin/snmp-discovery"
+  ],
+  "go_version": "1.26.10",
+  "verified_on": "2026-11-05",
+  "metadata_url": "https://hub.docker.com/v2/repositories/netboxlabs/orb-agent/tags/2.17.0"
+}
